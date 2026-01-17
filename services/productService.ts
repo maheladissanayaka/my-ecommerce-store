@@ -26,3 +26,16 @@ export async function getProducts(searchParams?: { q?: string; category?: string
 
   return JSON.parse(JSON.stringify(products));
 }
+
+// 👇 THIS IS THE NEW FUNCTION YOU WERE MISSING 👇
+export async function getProductById(id: string) {
+  await connectDB();
+  
+  try {
+    const product = await Product.findById(id);
+    if (!product) return null;
+    return JSON.parse(JSON.stringify(product));
+  } catch (error) {
+    return null;
+  }
+}
