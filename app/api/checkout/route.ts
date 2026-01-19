@@ -2,31 +2,30 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import Order from "@/models/Order";
-import Stripe from "stripe";
-
-// Initialize Stripe with the EXACT version required by your installed library
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover" as any, // <--- FIX IS HERE
-  // Adding 'as any' tells TypeScript: "Trust me, this string is fine."
-  // This prevents the error even if the library updates again in the future.
-});
+import { Order } from "@/models/Order";
+import User from "@/models/User";
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ url: "/login" }, { status: 401 });
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ url: "/login" });
     }
 
-    const { items, totalAmount } = await req.json();
-
+    // 👇 Get paymentMethod from the request
+    const { items, totalAmount, paymentMethod } = await req.json();
     await connectDB();
 
-    // 1. Create Order (Pending)
-    const newOrder = await Order.create({
-      user: session.user.id,
+    // Fail-Safe: Find User ID
+    let userId = (session.user as any).id;
+    if (!userId) {
+      const dbUser = await User.findOne({ email: session.user.email });
+      if (dbUser) userId = dbUser._id;
+    }
+
+    // Create the Order
+    await Order.create({
+      user: userId,
       items: items.map((item: any) => ({
         product: item._id,
         name: item.name,
@@ -35,39 +34,14 @@ export async function POST(req: Request) {
         image: item.image,
       })),
       totalAmount,
-      status: "pending",
+      status: "Processing",
+      paymentMethod, // 👈 Save "COD" or "Card" here
     });
 
-    // 2. Format for Stripe
-    const line_items = items.map((item: any) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.name,
-          images: [item.image],
-        },
-        unit_amount: Math.round(item.price * 100),
-      },
-      quantity: item.quantity,
-    }));
-
-    // 3. Create Session
-    const stripeSession = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items,
-      mode: "payment",
-      success_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/success?orderId=${newOrder._id}`,
-      cancel_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/cart`,
-      metadata: {
-        orderId: newOrder._id.toString(),
-        userId: session.user.id,
-      },
-      customer_email: session.user.email || undefined,
-    });
-
-    return NextResponse.json({ url: stripeSession.url });
+    return NextResponse.json({ url: "/orders" });
+    
   } catch (error) {
-    console.error("Checkout Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("CHECKOUT ERROR:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
