@@ -1,6 +1,6 @@
 import connectDB from "@/lib/mongodb";
 import Order from "@/models/Order";
-import { Product } from "@/models/Product"; // Required to populate product details
+import Product from "@/models/Product"; // Required to populate product details
 
 export async function getUserOrders(userId: string) {
   try {

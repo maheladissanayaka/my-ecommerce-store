@@ -38,19 +38,18 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-  // ADDED CALLBACKS HERE
   callbacks: {
     async jwt({ token, user }: any) {
-      // If user logs in, add their role to the token
       if (user) {
         token.role = user.role;
+        token.id = user._id; // <--- Add this (User ID)
       }
       return token;
     },
     async session({ session, token }: any) {
-      // Pass the role from the token to the session
       if (session.user) {
         session.user.role = token.role;
+        session.user.id = token.id; // <--- Add this (User ID)
       }
       return session;
     },

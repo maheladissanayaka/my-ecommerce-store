@@ -1,5 +1,5 @@
 import connectDB from "@/lib/mongodb";
-import { Product } from "@/models/Product";
+import Product  from "@/models/Product";
 
 // Update this function signature to accept filters
 export async function getProducts(searchParams?: { q?: string; category?: string }) {

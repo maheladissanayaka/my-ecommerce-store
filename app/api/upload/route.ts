@@ -24,7 +24,10 @@ export async function POST(req: Request) {
     // Upload using a Promise wrapper
     const result = await new Promise<any>((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { folder: "techstore_products" }, // Optional: organize in a folder
+        { 
+            folder: "lumina_products", // Updated folder name for your Fashion Store
+            resource_type: "image"     // Explicitly state this is an image
+        }, 
         (error, result) => {
           if (error) reject(error);
           else resolve(result);

@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getUserOrders } from "@/services/orderService";
-import Order from "@/models/Order"; // This is the Database Model
 import User from "@/models/User";
 import connectDB from "@/lib/mongodb";
 import { redirect } from "next/navigation";
@@ -9,15 +8,16 @@ import Link from "next/link";
 import OrderCard from "./_components/OrderCard";
 import EmptyOrders from "./_components/EmptyOrders";
 
-// 1. Define the shape of an Order Item
+// Order Interface
 interface OrderItem {
   name: string;
   price: number;
   quantity: number;
   image: string;
+  size?: string;
+  color?: string;
 }
 
-// 2. RENAME this interface to avoid conflict with the import above
 interface OrderType {
   _id: string;
   createdAt: string;
@@ -33,34 +33,43 @@ export default async function OrdersPage() {
     redirect("/login");
   }
 
-  // Fetch User ID
+  // Fetch User & Orders
   await connectDB();
   const user = await User.findOne({ email: session.user.email });
   
-  // Fetch Orders
-  const orders = await getUserOrders(user._id);
+  // Use .lean() or JSON.parse to ensure serializable data
+  const ordersData = await getUserOrders(user._id);
+  const orders = JSON.parse(JSON.stringify(ordersData));
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 min-h-screen">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">My Orders</h1>
-        <Link href="/" className="text-sm text-blue-600 hover:underline font-medium">
-          ← Continue Shopping
-        </Link>
-      </div>
-
-      {/* Content Section */}
-      {orders.length === 0 ? (
-        <EmptyOrders />
-      ) : (
-        <div className="space-y-6">
-          {/* 3. Use the new name 'OrderType' here */}
-          {orders.map((order: OrderType) => (
-            <OrderCard key={order._id} order={order} />
-          ))}
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-5xl mx-auto px-4 py-12">
+        
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-gray-900">My Orders</h1>
+            <p className="text-gray-500 mt-2">Track your delivery status and purchase history.</p>
+          </div>
+          <Link 
+            href="/" 
+            className="text-sm font-bold text-pink-600 hover:text-pink-700 hover:underline flex items-center gap-1"
+          >
+            ← Continue Shopping
+          </Link>
         </div>
-      )}
+
+        {/* Content Section */}
+        {orders.length === 0 ? (
+          <EmptyOrders />
+        ) : (
+          <div className="space-y-6">
+            {orders.map((order: OrderType) => (
+              <OrderCard key={order._id} order={order} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

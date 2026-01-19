@@ -2,51 +2,43 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; // Import Image for preview
+import Image from "next/image";
 
 export default function ProductForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false); // New state for image upload
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
-    category: "Electronics",
-    image: "", // This will store the Cloudinary URL
+    category: "Dresses", // Changed default to fashion category
+    images: [] as string[], // Supports array
     stock: "",
+    // New fields for fashion
+    sizes: [] as string[],
+    colors: [] as string[],
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // NEW: Handle File Selection & Upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-
     const file = e.target.files[0];
-    setUploading(true); // Start loading spinner
+    setUploading(true);
 
     const data = new FormData();
     data.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: data,
-      });
-
+      const res = await fetch("/api/upload", { method: "POST", body: data });
       const json = await res.json();
-
       if (res.ok) {
-        // Set the Cloudinary URL into our formData
-        setFormData((prev) => ({ ...prev, image: json.url }));
+        // Append to images array
+        setFormData((prev) => ({ ...prev, images: [...prev.images, json.url] }));
       } else {
         alert("Image upload failed");
       }
@@ -54,7 +46,7 @@ export default function ProductForm() {
       console.error(error);
       alert("Error uploading image");
     } finally {
-      setUploading(false); // Stop loading spinner
+      setUploading(false);
     }
   };
 
@@ -70,7 +62,7 @@ export default function ProductForm() {
       });
 
       if (res.ok) {
-        alert("✅ Product Created Successfully!");
+        alert("✅ Fashion Item Created!");
         router.push("/admin/products");
         router.refresh();
       } else {
@@ -84,83 +76,152 @@ export default function ProductForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ... Name, Description, Price, Stock fields remain the same ... */}
+    <form onSubmit={handleSubmit} className="space-y-8">
       
-      {/* KEEP THESE FIELDS (Just copying Name for context) */}
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-        <input id="name" type="text" name="name" value={formData.name} required className="w-full border rounded-lg px-4 py-2 outline-none" onChange={handleChange} />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea id="description" name="description" value={formData.description} required rows={4} className="w-full border rounded-lg px-4 py-2 outline-none" onChange={handleChange} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-           <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
-           <input id="price" type="number" name="price" value={formData.price} required step="0.01" className="w-full border rounded-lg px-4 py-2 outline-none" onChange={handleChange} />
-        </div>
-        <div>
-           <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-           <input id="stock" type="number" name="stock" value={formData.stock} required className="w-full border rounded-lg px-4 py-2 outline-none" onChange={handleChange} />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select id="category" name="category" value={formData.category} className="w-full border rounded-lg px-4 py-2 bg-white outline-none" onChange={handleChange}>
-          <option value="Electronics">Electronics</option>
-          <option value="Clothing">Clothing</option>
-          <option value="Home">Home</option>
-          <option value="Books">Books</option>
-          <option value="Wearables">Wearables</option>
-        </select>
-      </div>
-
-      {/* --- NEW IMAGE UPLOAD SECTION (Fixed) --- */}
-      <div>
-        <label 
-          htmlFor="image-upload" // <--- 1. Link this
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Product Image
-        </label>
-        
-        {/* File Input */}
-        <input
-          id="image-upload" // <--- 2. To this ID
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-        />
-
-        {/* Loading Indicator */}
-        {uploading && <p className="text-sm text-blue-600 mt-2">Uploading image...</p>}
-
-        {/* Preview the uploaded image */}
-        {formData.image && (
-          <div className="mt-4 relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border">
-            <Image 
-              src={formData.image} 
-              alt="Product Preview" 
-              fill 
-              className="object-cover" 
+      {/* 1. Basic Details Section */}
+      <div className="space-y-5">
+          <h3 className="text-sm uppercase tracking-wide text-gray-400 font-bold border-b pb-2">Basic Details</h3>
+          
+          <div>
+            <label htmlFor="name" className="block text-sm font-bold text-gray-700 mb-2">Product Name</label>
+            <input 
+                id="name" 
+                name="name" 
+                type="text" 
+                placeholder="e.g. Summer Floral Maxi Dress"
+                value={formData.name} 
+                required 
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all" 
+                onChange={handleChange} 
             />
           </div>
-        )}
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-bold text-gray-700 mb-2">Description</label>
+            <textarea 
+                id="description" 
+                name="description" 
+                placeholder="Describe the fabric, fit, and style..."
+                value={formData.description} 
+                required 
+                rows={4} 
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all resize-none" 
+                onChange={handleChange} 
+            />
+          </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading || uploading} // Disable if submitting OR uploading image
-        className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        {loading ? "Creating..." : "Create Product"}
-      </button>
+      {/* 2. Pricing & Category Section */}
+      <div className="space-y-5">
+          <h3 className="text-sm uppercase tracking-wide text-gray-400 font-bold border-b pb-2">Inventory Data</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label htmlFor="price" className="block text-sm font-bold text-gray-700 mb-2">Price ($)</label>
+                <div className="relative">
+                    <span className="absolute left-4 top-3 text-gray-400">$</span>
+                    <input 
+                        id="price" 
+                        name="price" 
+                        type="number" 
+                        placeholder="0.00"
+                        value={formData.price} 
+                        required 
+                        step="0.01" 
+                        className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all" 
+                        onChange={handleChange} 
+                    />
+                </div>
+            </div>
+            <div>
+                <label htmlFor="stock" className="block text-sm font-bold text-gray-700 mb-2">Stock Quantity</label>
+                <input 
+                    id="stock" 
+                    name="stock" 
+                    type="number" 
+                    placeholder="e.g. 50"
+                    value={formData.stock} 
+                    required 
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all" 
+                    onChange={handleChange} 
+                />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="category" className="block text-sm font-bold text-gray-700 mb-2">Category</label>
+            <div className="relative">
+                <select 
+                    id="category" 
+                    name="category" 
+                    value={formData.category} 
+                    className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 bg-white outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all cursor-pointer" 
+                    onChange={handleChange}
+                >
+                    <option value="Dresses">Dresses</option>
+                    <option value="Tops">Tops</option>
+                    <option value="Bottoms">Bottoms</option>
+                    <option value="Outerwear">Outerwear</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Shoes">Shoes</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
+            </div>
+          </div>
+      </div>
+
+      {/* 3. Image Upload Section */}
+      <div className="space-y-5">
+        <h3 className="text-sm uppercase tracking-wide text-gray-400 font-bold border-b pb-2">Visuals</h3>
+        
+        <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Product Images</label>
+            
+            <div className="flex flex-col items-center justify-center w-full">
+                <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        {uploading ? (
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div>
+                        ) : (
+                            <>
+                                <svg className="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                                <p className="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                            </>
+                        )}
+                    </div>
+                    <input id="image-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+                </label>
+            </div>
+
+            {/* Preview Grid */}
+            {formData.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                    {formData.images.map((img, index) => (
+                        <div key={index} className="relative aspect-[3/4] w-full bg-gray-100 rounded-lg overflow-hidden border border-gray-200 group">
+                            <Image src={img} alt="Preview" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button type="button" className="text-white text-xs bg-red-500 px-2 py-1 rounded">Remove</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <div className="pt-4">
+        <button
+            type="submit"
+            disabled={loading || uploading}
+            className="w-full bg-gradient-to-r from-gray-900 to-black hover:from-pink-600 hover:to-rose-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg transform active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+            {loading ? "Creating Product..." : "Launch Product"}
+        </button>
+      </div>
     </form>
   );
 }

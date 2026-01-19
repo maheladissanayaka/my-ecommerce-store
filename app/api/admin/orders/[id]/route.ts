@@ -16,16 +16,27 @@ export async function PUT(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    // 2. Await Params (Next.js 15 requirement)
     const { id } = await params;
-    const { status } = await req.json(); // Get new status from body
+    const { status } = await req.json();
+
+    // 3. Validation: Ensure status matches your Order Model enums
+    const validStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
+    
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json(
+        { message: "Invalid status value. Allowed: " + validStatuses.join(", ") }, 
+        { status: 400 }
+      );
+    }
 
     await connectDB();
 
-    // 2. Update Order
+    // 4. Update Order
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
       { status },
-      { new: true } // Return the updated document
+      { new: true } // Return the updated document to update UI immediately
     );
 
     if (!updatedOrder) {
@@ -34,6 +45,7 @@ export async function PUT(
 
     return NextResponse.json(updatedOrder);
   } catch (error) {
+    console.error("Error updating order:", error);
     return NextResponse.json(
       { message: "Error updating order" },
       { status: 500 }

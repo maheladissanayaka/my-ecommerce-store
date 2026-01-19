@@ -1,13 +1,20 @@
-// src/models/Product.ts
-import mongoose, { Schema, model, models } from 'mongoose';
+// models/Product.ts
+import mongoose from "mongoose";
 
-const ProductSchema = new Schema({
-  name: { type: String, required: true },
-  description: { type: String, required: true },
-  price: { type: Number, required: true },
-  category: { type: String, required: true },
-  image: { type: String, required: true },
-  stock: { type: Number, default: 0 },
-}, { timestamps: true });
+const productSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String, required: true },
+    price: { type: Number, required: true },
+    // Fashion specific fields
+    category: { type: String, required: true }, // e.g., "Dresses", "Tops", "Denim"
+    images: [{ type: String, required: true }], // Array of strings (Main img + Hover img)
+    sizes: [{ type: String }], // e.g., ["XS", "S", "M", "L", "XL"]
+    colors: [{ type: String }], // e.g., ["Red", "Blue", "Black"]
+    inStock: { type: Boolean, default: true },
+    isNewArrival: { type: Boolean, default: false }, // Great for "New In" sections
+  },
+  { timestamps: true }
+);
 
-export const Product = models.Product || model('Product', ProductSchema);
+export default mongoose.models.Product || mongoose.model("Product", productSchema);

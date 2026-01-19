@@ -13,8 +13,8 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
-      required: false, // Not required if using Google Login
-      select: false,   // Prevents password from being returned in queries by default
+      required: false,
+      select: false,
     },
     role: {
       type: String,
@@ -24,11 +24,22 @@ const UserSchema = new Schema(
     image: {
       type: String,
     },
+    // 👇 NEW FIELDS
+    phone: {
+      type: String,
+      required: false,
+    },
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      zip: String,
+      country: String,
+    },
   },
   { timestamps: true }
 );
 
-// This check is important in Next.js to prevent "OverwriteModelError"
 const User = models.User || model("User", UserSchema);
 
 export default User;
