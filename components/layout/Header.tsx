@@ -10,7 +10,7 @@ import CartButton from "../ui/CartButton";
 
 export default function Header() {
   const { data: session } = useSession();
-  const { items } = useCart();
+  const { cart } = useCart();
   const { toggleSidebar } = useUIStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [category, setCategory] = useState("All");
