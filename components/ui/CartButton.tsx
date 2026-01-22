@@ -1,23 +1,27 @@
 "use client";
 
-import { useCart } from "@/store/useCart"; // Updated to match our previous store file
+import { useCart } from "@/store/useCart"; 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function CartButton() {
-  const { items } = useCart();
+  const { cart } = useCart();
   const [mounted, setMounted] = useState(false);
 
-  // Prevent hydration mismatch
   useEffect(() => {
-    setMounted(true);
+    // 👇 FIX: Use setTimeout to avoid the "synchronous update" error
+    const timer = setTimeout(() => {
+        setMounted(true);
+    }, 100);
+
+    return () => clearTimeout(timer); // Cleanup
   }, []);
 
-  // Calculate total quantity
-  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
+  // Calculate total safely
+  const totalItems = (cart || []).reduce((acc, item) => acc + item.quantity, 0);
 
   if (!mounted) {
-    // Return a placeholder of the same size to prevent layout shift
+    // Return a placeholder to prevent layout shift
     return <div className="w-10 h-10" />;
   }
 

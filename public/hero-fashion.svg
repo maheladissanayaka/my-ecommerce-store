@@ -1,0 +1,34 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a050a" />
+      <stop offset="50%" stop-color="#3d0e1e" />
+      <stop offset="100%" stop-color="#1a050a" />
+    </linearGradient>
+    <linearGradient id="petalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#db2777" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#be123c" stop-opacity="0.1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+
+  <g filter="url(#glow)" transform="translate(400, 0)">
+    <path d="M1200 1200 C 1400 800, 1800 600, 1920 200 L 1920 1080 Z" fill="url(#petalGradient)" />
+    
+    <path d="M1000 1080 Q 1400 600 1920 800 V 1080 Z" fill="#9d174d" fill-opacity="0.3" />
+    
+    <circle cx="1600" cy="300" r="150" fill="#f472b6" fill-opacity="0.1" />
+    <circle cx="1400" cy="800" r="100" fill="#fb7185" fill-opacity="0.15" />
+    <path d="M1500 0 Q 1600 500 1920 400 V 0 Z" fill="#831843" fill-opacity="0.2" />
+  </g>
+  
+  <rect width="100%" height="100%" fill="black" fill-opacity="0.2" />
+</svg>

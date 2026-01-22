@@ -1,71 +1,39 @@
 "use client";
 
-import { useCart } from "@/store/useCart";
+import { useCart } from "@/store/useCart"; // Matches new store
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function CartSummary({ discount = 0 }: { discount?: number }) {
-  const { items, clearCart, getCartTotal } = useCart();
+  // 👇 FIX 1: Use correct names from store
+  const { cart, totalAmount } = useCart();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("COD");
   const router = useRouter();
 
-  const subtotal = getCartTotal ? getCartTotal() : items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // 👇 FIX 2: Use totalAmount() from store directly
+  const subtotal = totalAmount();
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     setLoading(true);
-    try {
-      // Simulate API call or replace with real one
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, totalAmount: total, paymentMethod }), 
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok) { // Check res.ok instead of data.url for robustness
-         clearCart();
-         if (data.url) window.location.href = data.url;
-         else router.push("/success?orderId=" + (data.orderId || "123"));
-      } else {
-        alert("Checkout failed. Please try again."); // Simple error handling
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    // 👇 FIX 3: Redirect to the Checkout Page (to enter address) instead of API directly
+    router.push("/checkout"); 
+    setLoading(false);
   };
 
   return (
     <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 sticky top-4">
       <h2 className="text-2xl font-bold mb-6 text-gray-900">Order Summary</h2>
       
-      {/* Payment Method */}
+      {/* Payment Method Note */}
       <div className="mb-8">
         <h3 className="font-semibold mb-3 text-sm text-gray-500 uppercase tracking-wider">Payment Method</h3>
-        <div className="space-y-3">
-            <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                paymentMethod === "COD" ? "border-black bg-gray-50" : "border-gray-100 hover:border-gray-300"
-            }`}>
-                <input 
-                    type="radio" 
-                    name="payment" 
-                    value="COD" 
-                    checked={paymentMethod === "COD"}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-5 h-5 accent-black"
-                />
-                <span className="ml-3 font-medium text-gray-900">Cash on Delivery</span>
-            </label>
-            
-            <label className="flex items-center p-4 rounded-xl border border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed">
-                <input type="radio" name="payment" disabled className="w-5 h-5" />
-                <span className="ml-3 font-medium text-gray-500">Credit Card (Coming Soon)</span>
-            </label>
+        <div className="p-4 rounded-xl border border-black bg-gray-50 flex items-center">
+            <span className="w-5 h-5 bg-black rounded-full mr-3 flex items-center justify-center">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+            </span>
+            <span className="font-medium text-gray-900">Cash on Delivery</span>
         </div>
       </div>
 
@@ -90,14 +58,14 @@ export default function CartSummary({ discount = 0 }: { discount?: number }) {
 
       <button
         onClick={handleCheckout}
-        disabled={loading}
+        disabled={loading || cart.length === 0}
         className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 hover:shadow-lg transform active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
       >
         {loading ? (
             <>Processing...</>
         ) : (
             <>
-                Checkout Now 
+                Proceed to Checkout
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
             </>
         )}

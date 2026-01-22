@@ -8,7 +8,7 @@ export default function Hero() {
       {/* Background Image - Mobile Optimized */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src="/hero-fashion.jpg" // Ensure you have a high-quality portrait/landscape fashion image
+          src="/hero-fashion.svg" // Ensure you have a high-quality portrait/landscape fashion image
           alt="Summer Fashion Collection"
           fill
           className="object-cover object-center brightness-[0.70] md:brightness-75 transition-transform duration-[20s] hover:scale-105" // Subtle zoom effect
