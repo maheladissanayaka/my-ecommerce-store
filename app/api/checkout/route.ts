@@ -3,17 +3,22 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import Order from "@/models/Order";
+import Stripe from "stripe";
 
-// 1. Define the type for the items coming from the frontend
 interface CheckoutItem {
   _id: string;
   name: string;
   price: number;
-  images: string[];
   quantity: number;
+  images?: string[];
   selectedSize?: string;
   selectedColor?: string;
 }
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-12-15.clover", // Matching your library version
+  typescript: true,
+});
 
 export async function POST(req: Request) {
   try {
@@ -23,41 +28,74 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { items, shippingAddress, totalAmount } = body;
+    const { items, shippingAddress, totalAmount, paymentMethod } = body;
 
-    // Validation
     if (!items || items.length === 0) {
       return NextResponse.json({ message: "Cart is empty" }, { status: 400 });
-    }
-    
-    if (!shippingAddress) {
-        return NextResponse.json({ message: "Address missing" }, { status: 400 });
     }
 
     await connectDB();
 
-    // 2. Create Order (Using the CheckoutItem type instead of 'any')
+    // 1. Create Order
+    // The paymentMethod passed here will now be "COD" or "Card", matching your Schema
     const newOrder = await Order.create({
       user: session.user.id,
       items: items.map((item: CheckoutItem) => ({
         product: item._id,
         name: item.name,
-        image: item.images?.[0] || "/placeholder.jpg", 
+        image: item.images?.[0] || "/placeholder.jpg",
         price: item.price,
         quantity: item.quantity,
-        size: item.selectedSize || "N/A", 
-        color: item.selectedColor || "N/A"
+        size: item.selectedSize || "N/A",
+        color: item.selectedColor || "N/A",
       })),
       totalAmount: totalAmount,
       shippingAddress: shippingAddress,
+      paymentMethod: paymentMethod, 
       status: "pending",
-      paymentMethod: "COD"
+      isPaid: false,
     });
 
-    return NextResponse.json({ message: "Order placed successfully", orderId: newOrder._id }, { status: 201 });
+    // 2. Handle Payment Methods
+    // 👇 FIXED: Check for uppercase "COD"
+    if (paymentMethod === "COD") {
+      return NextResponse.json({
+        url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?orderId=${newOrder._id}`,
+      });
+    } 
+    // 👇 FIXED: Check for capitalized "Card"
+    else if (paymentMethod === "Card") {
+      const line_items = items.map((item: CheckoutItem) => ({
+        price_data: {
+          currency: "lkr", 
+          product_data: {
+            name: item.name,
+            images: [item.images?.[0] || ""],
+          },
+          unit_amount: Math.round(item.price * 100), 
+        },
+        quantity: item.quantity,
+      }));
+
+      const stripeSession = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"], // Stripe API still expects lowercase here, that's fine
+        line_items: line_items,
+        mode: "payment",
+        success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?orderId=${newOrder._id}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-error`, 
+        metadata: {
+          orderId: newOrder._id.toString(),
+          userId: session.user.id,
+        },
+      });
+
+      return NextResponse.json({ url: stripeSession.url });
+    }
+
+    return NextResponse.json({ message: "Invalid payment method" }, { status: 400 });
 
   } catch (error) {
-    console.error("🔥 Checkout Server Error:", error);
-    return NextResponse.json({ message: "Error placing order" }, { status: 500 });
+    console.error("Checkout Error:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

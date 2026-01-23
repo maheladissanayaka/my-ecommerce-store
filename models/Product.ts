@@ -1,20 +1,37 @@
-// models/Product.ts
-import mongoose from "mongoose";
+import mongoose, { Schema, model, models } from "mongoose";
 
-const productSchema = new mongoose.Schema(
+const ReviewSchema = new Schema(
   {
     name: { type: String, required: true },
-    description: { type: String, required: true },
-    price: { type: Number, required: true },
-    // Fashion specific fields
-    category: { type: String, required: true }, // e.g., "Dresses", "Tops", "Denim"
-    images: [{ type: String, required: true }], // Array of strings (Main img + Hover img)
-    sizes: [{ type: String }], // e.g., ["XS", "S", "M", "L", "XL"]
-    colors: [{ type: String }], // e.g., ["Red", "Blue", "Black"]
-    inStock: { type: Boolean, default: true },
-    isNewArrival: { type: Boolean, default: false }, // Great for "New In" sections
+    rating: { type: Number, required: true },
+    comment: { type: String, required: true },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Product || mongoose.model("Product", productSchema);
+const ProductSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String, required: true },
+    price: { type: Number, required: true },
+    category: { type: String, required: true },
+    images: [{ type: String }],
+    sizes: [{ type: String }],
+    colors: [{ type: String }],
+    
+    // 👇 NEW FIELDS FOR REVIEWS
+    reviews: [ReviewSchema],
+    rating: { type: Number, required: true, default: 0 },
+    numReviews: { type: Number, required: true, default: 0 },
+  },
+  { timestamps: true }
+);
+
+const Product = models.Product || model("Product", ProductSchema);
+
+export default Product;

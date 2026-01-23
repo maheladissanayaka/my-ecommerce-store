@@ -1,7 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
-// 1. Define Cart Item
 export interface CartItem {
   _id: string;
   name: string;
@@ -12,45 +11,54 @@ export interface CartItem {
   quantity: number;
 }
 
-// 2. Define Actions
 interface CartStore {
-  cart: CartItem[]; // 👈 MUST be named 'cart'
+  cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string, size?: string, color?: string) => void;
+  updateQuantity: (id: string, size: string | undefined, color: string | undefined, quantity: number) => void;
   clearCart: () => void;
-  totalAmount: () => number; // 👈 MUST be named 'totalAmount'
+  totalAmount: () => number;
 }
 
-// 3. Create Store
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
-      cart: [], // 👈 Initial state is 'cart'
+      cart: [],
 
-      addToCart: (newItem) => {
-        const currentCart = get().cart;
-        const existingItem = currentCart.find(
-          (item) => 
-            item._id === newItem._id && 
-            item.selectedSize === newItem.selectedSize &&
-            item.selectedColor === newItem.selectedColor
+      addToCart: (item) => {
+        const { cart } = get();
+        const existingItem = cart.find(
+          (i) => i._id === item._id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor
         );
 
         if (existingItem) {
           set({
-            cart: currentCart.map((item) =>
-              item === existingItem ? { ...item, quantity: item.quantity + 1 } : item
+            cart: cart.map((i) =>
+              i._id === item._id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor
+                ? { ...i, quantity: i.quantity + item.quantity }
+                : i
             ),
           });
         } else {
-          set({ cart: [...currentCart, { ...newItem, quantity: 1 }] });
+          set({ cart: [...cart, item] });
         }
       },
 
       removeFromCart: (id, size, color) => {
         set({
           cart: get().cart.filter(
-            (item) => !(item._id === id && item.selectedSize === size && item.selectedColor === color)
+            (i) => !(i._id === id && i.selectedSize === size && i.selectedColor === color)
+          ),
+        });
+      },
+
+      updateQuantity: (id, size, color, quantity) => {
+        const { cart } = get();
+        set({
+          cart: cart.map((i) =>
+            i._id === id && i.selectedSize === size && i.selectedColor === color
+              ? { ...i, quantity: quantity }
+              : i
           ),
         });
       },
@@ -58,9 +66,12 @@ export const useCart = create<CartStore>()(
       clearCart: () => set({ cart: [] }),
 
       totalAmount: () => {
-        return get().cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-      }
+        return get().cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      },
     }),
-    { name: "cart-storage" }
+    {
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
+    }
   )
 );

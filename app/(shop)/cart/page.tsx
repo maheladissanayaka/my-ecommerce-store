@@ -1,100 +1,142 @@
 "use client";
 
-import { useCart } from "@/store/useCart"; // Matches your new store
-import { useEffect, useState } from "react";
+import { useCart, CartItem as CartItemType } from "@/store/useCart";
+import { useEffect, useState, useRef, useCallback } from "react";
 import EmptyCart from "./_components/EmptyCart";
 import CartItem from "./_components/CartItem";
 import CartSummary from "./_components/CartSummary";
 
 export default function CartPage() {
-  // 👇 FIX 1: Use 'cart' instead of 'items'
   const { cart, clearCart } = useCart();
   const [mounted, setMounted] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [discount, setDiscount] = useState(0);
+  
+  // State to track selected items
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  
+  // Ref to track if we have already initialized the default selection
+  const isInitialized = useRef(false);
 
-  // 👇 FIX 2: Use setTimeout to fix the React warning
+  // Helper to generate unique ID for items
+  const getItemKey = useCallback((item: CartItemType) => {
+    return `${item._id}-${item.selectedSize}-${item.selectedColor}`;
+  }, []);
+
+  // 👇 FIX 1: Wrap setMounted in setTimeout to avoid the "synchronous update" error
   useEffect(() => {
     const timer = setTimeout(() => {
-        setMounted(true);
-    }, 100);
+      setMounted(true);
+    }, 0);
     return () => clearTimeout(timer);
   }, []);
 
-  const applyCoupon = async () => {
-    if (!couponCode) return;
-    if (couponCode.toUpperCase() === "FASHION10") {
-        setDiscount(10);
-        alert("Coupon applied: 10% OFF");
-    } else {
-        alert("Invalid coupon code");
-        setDiscount(0);
+  // 👇 FIX 2: Auto-select items when cart loads (also wrapped to be safe)
+  useEffect(() => {
+    if (mounted && cart.length > 0 && !isInitialized.current) {
+        const allKeys = new Set(cart.map((item) => getItemKey(item)));
+        
+        setTimeout(() => {
+           setSelectedKeys(allKeys);
+           isInitialized.current = true;
+        }, 0);
     }
-  };
+  }, [mounted, cart, getItemKey]);
 
   if (!mounted) return <div className="min-h-screen bg-white" />;
 
-  // 👇 FIX 3: Ensure cart exists before checking length
   const cartItems = cart || [];
 
+  // Toggle Single Item
+  const toggleItem = (key: string) => {
+    const newSelected = new Set(selectedKeys);
+    if (newSelected.has(key)) {
+        newSelected.delete(key);
+    } else {
+        newSelected.add(key);
+    }
+    setSelectedKeys(newSelected);
+  };
+
+  // Toggle "Select All"
+  const toggleAll = () => {
+    if (selectedKeys.size === cartItems.length) {
+        setSelectedKeys(new Set()); // Deselect all
+    } else {
+        const allKeys = new Set(cartItems.map(getItemKey));
+        setSelectedKeys(allKeys); // Select all
+    }
+  };
+
+  // Check if all are selected
+  const isAllSelected = cartItems.length > 0 && selectedKeys.size === cartItems.length;
+
+  // Calculate Subtotal for SELECTED items only
+  const selectedTotal = cartItems
+    .filter(item => selectedKeys.has(getItemKey(item)))
+    .reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16">
-        <h1 className="text-3xl md:text-4xl font-bold mb-8 text-gray-900">
-          Shopping Bag <span className="text-lg font-normal text-gray-500 ml-2">({cartItems.length} items)</span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+        <h1 className="text-2xl md:text-3xl font-bold mb-6 text-gray-900">
+          Shopping Cart ({cartItems.length})
         </h1>
 
         {cartItems.length === 0 ? (
           <EmptyCart />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <div className="flex flex-col lg:flex-row gap-8">
             
-            {/* LEFT COLUMN: Items List */}
-            <div className="lg:col-span-8 space-y-4">
+            {/* LEFT COLUMN: Cart Items */}
+            <div className="flex-1 space-y-4">
+              
+              {/* Select All / Delete All Bar */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div 
+                      onClick={toggleAll}
+                      className="cursor-pointer flex items-center gap-3"
+                    >
+                      <input 
+                          type="checkbox" 
+                          checked={isAllSelected}
+                          readOnly // Controlled by onClick on parent
+                          className="w-5 h-5 accent-black cursor-pointer"
+                      />
+                      <span className="font-medium text-gray-700 select-none">Select All ({cartItems.length})</span>
+                    </div>
+                 </div>
+                 <button
+                    onClick={clearCart}
+                    className="text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
+                >
+                    Delete All
+                </button>
+              </div>
+              
+              {/* Cart Items List */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
                 <div className="space-y-6">
-                    {/* 👇 FIX 4: Map over 'cartItems' */}
-                    {cartItems.map((item) => (
-                        <CartItem key={`${item._id}-${item.selectedSize}-${item.selectedColor}`} item={item} />
-                    ))}
-                </div>
-                
-                <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
-                    <button
-                        onClick={clearCart}
-                        className="text-sm font-medium text-red-500 hover:text-red-700 hover:underline transition-colors"
-                    >
-                        Clear Shopping Bag
-                    </button>
+                    {cartItems.map((item) => {
+                        const key = getItemKey(item);
+                        return (
+                            <CartItem 
+                                key={key} 
+                                item={item} 
+                                isSelected={selectedKeys.has(key)}
+                                onToggle={() => toggleItem(key)}
+                            />
+                        );
+                    })}
                 </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Coupon + Summary */}
-            <div className="lg:col-span-4 space-y-6 h-fit">
-              
-              {/* Coupon Input */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="font-semibold mb-3 text-gray-900">Have a promo code?</h3>
-                  <div className="flex gap-2">
-                      <input 
-                          type="text"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          placeholder="Promo Code"
-                          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black uppercase tracking-wider"
-                      />
-                      <button 
-                          onClick={applyCoupon}
-                          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-black transition-colors"
-                      >
-                          Apply
-                      </button>
-                  </div>
-              </div>
-
-              {/* Summary Component */}
-              <CartSummary discount={discount} />
+            {/* RIGHT COLUMN: Summary */}
+            <div className="w-full lg:w-[380px] h-fit">
+              <CartSummary 
+                subtotal={selectedTotal} 
+                selectedCount={selectedKeys.size} 
+              />
             </div>
           </div>
         )}
